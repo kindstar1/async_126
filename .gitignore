@@ -3,5 +3,5 @@ __pycache__/
 
 venv/
 
-.cursorrules/
+
 recreate_db.sh
