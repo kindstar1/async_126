@@ -1,12 +1,11 @@
 import asyncio
-import datetime
-from itertools import batched
 
 import aiohttp
 
 from migrate_db import DbSession, SwapiPeople, close_orm, init_orm
 
 MAX_REQUESTS = 10
+TIMEOUT = aiohttp.ClientTimeout(total=120)
 
 
 async def get_people(session: aiohttp.ClientSession):
@@ -18,6 +17,7 @@ async def get_people(session: aiohttp.ClientSession):
         for i in json_data.get("results", []):
             uids_list.append(i.get("uid"))
         url = json_data.get("next")
+        print(url)
 
     async def get_person(uid: str):
         response = await session.get(f"https://swapi.tech/api/people/{uid}")
@@ -32,8 +32,8 @@ async def get_people(session: aiohttp.ClientSession):
 
 
 async def insert_peoples(people_list: list[dict]):
+    people_list = [p for p in people_list if p is not None]
     async with DbSession() as session:
-
         for item in people_list:
             person = SwapiPeople(
                 id=int(item["uid"]),
@@ -51,10 +51,13 @@ async def insert_peoples(people_list: list[dict]):
 
 
 async def main():
-    async with aiohttp.ClientSession() as http_session:
+    # Не переиспользовать соединения — за VPN часто «висят» keep-alive
+    connector = aiohttp.TCPConnector(force_close=True)
+    async with aiohttp.ClientSession(timeout=TIMEOUT, connector=connector) as http_session:
         await init_orm()
         people_list = await get_people(http_session)
         await insert_peoples(people_list)
+        await close_orm()
 
 
 if __name__ == "__main__":

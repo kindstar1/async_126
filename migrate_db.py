@@ -31,7 +31,7 @@ class SwapiPeople(Base):
     gender: MappedColumn[str] = mapped_column(String)
     hair_color: MappedColumn[str] = mapped_column(String)
     homeworld: MappedColumn[str] = mapped_column(String)
-    mass: MappedColumn[int] = mapped_column(Integer)
+    mass: MappedColumn[str] = mapped_column(String)
     name: MappedColumn[str] = mapped_column(String)
     skin_color: MappedColumn[str] = mapped_column(String)
 
