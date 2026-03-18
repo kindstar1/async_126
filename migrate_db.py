@@ -34,6 +34,10 @@ class SwapiPeople(Base):
     mass: MappedColumn[str] = mapped_column(String)
     name: MappedColumn[str] = mapped_column(String)
     skin_color: MappedColumn[str] = mapped_column(String)
+    films: MappedColumn[str] = mapped_column(String)
+    species: MappedColumn[str] = mapped_column(String)
+    starships: MappedColumn[str] = mapped_column(String)
+    vehicles: MappedColumn[str] = mapped_column(String)
 
 async def init_orm():
 
