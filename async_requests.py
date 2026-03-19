@@ -161,7 +161,6 @@ async def get_title_for_url(
         fut.set_result(title)
         return title
     except Exception as exc:
-        # Чтобы остальные ожидали корректный результат.
         fut.set_result("")
         print(f"[FAIL] title for {url}: {exc}")
         return ""
@@ -181,9 +180,12 @@ async def get_people(
     uids_list: list[str] = []
 
     url = f"{BASE_URL}/people?page=1&limit={PAGE_LIMIT}"
+    page_n = 1
     while url is not None:
+        print(f"page {page_n} {url}")
         page_data = await fetch_json(session, url, semaphore)
         if page_data is None:
+            print("pagination stop (fail)")
             return []
 
         for i in page_data.get("results", []):
@@ -192,6 +194,9 @@ async def get_people(
                 uids_list.append(str(uid))
 
         url = page_data.get("next")
+        page_n += 1
+
+    print(f"uids total {len(uids_list)}")
 
     async def get_person_row(uid: str) -> dict | None:
         data = await fetch_json(session, f"{BASE_URL}/people/{uid}", semaphore)
@@ -316,11 +321,15 @@ async def get_people(
             "species": species,
         }
 
+    print("fetch persons")
     people_rows = await asyncio.gather(*(get_person_row(uid) for uid in uids_list))
-    return [r for r in people_rows if r is not None]
+    ok = [r for r in people_rows if r is not None]
+    print(f"persons ok {len(ok)} fail {len(people_rows) - len(ok)}")
+    return ok
 
 
 async def insert_peoples(people_list: list[dict]):
+    print(f"db insert {len(people_list)}")
     async with DbSession() as session:
         for item in people_list:
             person = SwapiPeople(
@@ -340,9 +349,11 @@ async def insert_peoples(people_list: list[dict]):
             )
             session.add(person)
         await session.commit()
+    print("db commit ok")
 
 
 async def main():
+    print("start")
     connector = aiohttp.TCPConnector(force_close=True)
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_HTTP)
     title_cache: dict[str, str] = {}
@@ -352,6 +363,7 @@ async def main():
 
     async with aiohttp.ClientSession(timeout=TIMEOUT, connector=connector) as http_session:
         await init_orm()
+        print("db init ok")
         people_list = await get_people(
             http_session,
             semaphore,
@@ -362,6 +374,7 @@ async def main():
         )
         await insert_peoples(people_list)
         await close_orm()
+        print("end")
 
 
 if __name__ == "__main__":
